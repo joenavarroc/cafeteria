@@ -658,3 +658,403 @@ if (colorTexto) {
   aplicarColorTexto(colorTexto);
 }
 });
+
+
+
+
+    let fechaSeleccionada = null;
+
+    function cargarHistorial() {
+      const historial = JSON.parse(localStorage.getItem('historialCierres')) || [];
+      const tbody = document.getElementById('historialBody');
+      tbody.innerHTML = '';
+
+      if (historial.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center">No hay cierres registrados.</td></tr>`;
+        return;
+      }
+
+      historial.forEach(dia => {
+        const fila = document.createElement('tr');
+        fila.innerHTML = `
+          <td>${dia.id}</td>
+          <td>${dia.fecha}</td>
+          <td>$${dia.total.toFixed(2)}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="verDetalle(${dia.id})">👁️ Ver</button>
+            <button class="btn btn-sm btn-warning" onclick="verDetalleMetodoPago('${dia.fecha}')">💳 Detalle</button>
+            <button class="btn btn-sm btn-info" onclick="verGrafico('${dia.fecha}')">📊 Gráfico</button>
+          </td>
+        `;
+        tbody.appendChild(fila);
+      });
+    }
+
+    function verDetalleMetodoPago(fecha) {
+      const historial = JSON.parse(localStorage.getItem('historialCierres')) || [];
+      const dia = historial.find(d => d.fecha === fecha);
+      if (!dia) return;
+    
+      const resumen = {};
+    
+      dia.ventas.forEach(v => {
+        resumen[v.metodoPago] = (resumen[v.metodoPago] || 0) + v.total;
+      });
+    
+      let mensaje = `💳 Detalle de pagos del día ${fecha}:\n\n`;
+      for (const metodo in resumen) {
+        mensaje += `• ${metodo}: $${resumen[metodo].toFixed(2)}\n`;
+      }
+    
+      alert(mensaje); // Podés usar un modal si preferís algo más elegante
+    }    
+
+    function verDetalle(id) {
+      const historial = JSON.parse(localStorage.getItem('historialCierres')) || [];
+      const dia = historial.find(d => d.id === id);
+      if (!dia) return;
+    
+      const contenedor = document.getElementById('detalleVentasDia');
+      const nombreNegocio = localStorage.getItem('nombreNegocio') || 'Mi Negocio';
+      contenedor.innerHTML = '';
+    
+      dia.ventas.forEach(v => {
+        let cuerpoTicket = `
+          <div style="font-family: monospace; max-width: 320px; background: #fff; padding: 16px; border: 1px dashed #999;">
+            <div class="text-center mb-2">
+              <strong style="font-size: 1.2em;">${nombreNegocio}</strong><br>
+              -----------------------------<br>
+              Venta #${v.id}<br>
+              Fecha: ${v.fecha}<br>
+              Pago: ${v.metodoPago}<br>
+              -----------------------------<br>
+            </div>
+        `;
+    
+        v.productos.forEach(p => {
+          const cantidad = p.cantidad || 1;
+          const precio = p.precio;
+          const total = precio * cantidad;
+    
+          cuerpoTicket += `
+            ${p.nombre}<br>
+            ${cantidad} x $${precio.toFixed(2)} = $${total.toFixed(2)}<br>
+          `;
+        });
+    
+        cuerpoTicket += `
+            -----------------------------<br>
+            <strong>Total: $${v.total.toFixed(2)}</strong><br>
+            -----------------------------<br>
+        `;
+    
+        // QR
+        const textoQR = `
+    ${nombreNegocio}
+    Venta ID: ${v.id}
+    Fecha: ${v.fecha}
+    Método de pago: ${v.metodoPago}
+    Total: $${v.total.toFixed(2)}
+        `.trim();
+    
+        const textoCodificado = encodeURIComponent(textoQR);
+        const qr = `<div class="text-center mt-2"><img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${textoCodificado}" alt="QR Ticket"></div>`;
+    
+        const div = document.createElement('div');
+        div.className = 'mb-4 d-flex flex-column align-items-center';
+        div.innerHTML = cuerpoTicket + qr + '</div>';
+    
+        contenedor.appendChild(div);
+      });
+    
+      new bootstrap.Modal(document.getElementById('modalDetalle')).show();
+    }
+    
+    
+
+    function verGrafico(fecha) {
+      fechaSeleccionada = fecha;
+      const historial = JSON.parse(localStorage.getItem('historialCierres')) || [];
+      const dia = historial.find(d => d.fecha === fecha);
+      if (!dia) return;
+    
+      const totalesPorProducto = {};
+    
+      dia.ventas.forEach(venta => {
+        venta.productos.forEach(producto => {
+          const nombre = producto.nombre;
+          const cantidad = producto.cantidad || 1;
+          const subtotal = producto.precio * cantidad;
+    
+          totalesPorProducto[nombre] = (totalesPorProducto[nombre] || 0) + subtotal;
+        });
+      });
+    
+      const nombres = Object.keys(totalesPorProducto);
+      const montos = Object.values(totalesPorProducto);
+    
+      if (window.miGrafico) {
+        window.miGrafico.destroy();
+      }
+    
+      const tipoGrafico = document.getElementById('tipoGrafico').value;
+      const ctx = document.getElementById('graficoVentas').getContext('2d');
+      window.miGrafico = new Chart(ctx, {
+        type: tipoGrafico,
+        data: {
+          labels: nombres,
+          datasets: [{
+            label: 'Monto Vendido ($)',
+            data: montos,
+            backgroundColor: nombres.map(() => `hsl(${Math.random() * 360}, 70%, 60%)`)
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: tipoGrafico !== 'bar' },
+            tooltip: {
+              callbacks: {
+                label: ctx => `Total: $${ctx.raw.toFixed(2)}`
+              }
+            }
+          }
+        }
+      });
+    }  
+
+    function actualizarGrafico() {
+      if (fechaSeleccionada) verGrafico(fechaSeleccionada);
+    }
+
+    document.addEventListener('DOMContentLoaded', cargarHistorial);
+
+
+
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const ventas = JSON.parse(localStorage.getItem('ventas')) || [];
+        const ventasBody = document.getElementById('ventasBody');
+        const totalGeneralTd = document.getElementById('totalGeneral');
+      
+        ventasBody.innerHTML = '';
+        let totalGeneral = 0;
+      
+        if (ventas.length === 0) {
+          ventasBody.innerHTML = '<tr><td colspan="5" class="text-center">No hay ventas registradas.</td></tr>';
+          totalGeneralTd.textContent = '$0.00';
+        } else {
+          ventas.filter(v => v && typeof v.total === 'number' && v.fecha && v.metodoPago).forEach((v, i) => {
+            // Acá va tu lógica actual para mostrar cada venta
+            // ...
+          });
+        
+          totalGeneralTd.textContent = `$${totalGeneral.toFixed(2)}`;
+        }
+        
+      
+        ventas.filter(v => v && typeof v.total === 'number' && v.fecha && v.metodoPago).forEach((v, i) => {
+          const fila = document.createElement('tr');
+          const numeroFactura = v.numeroFactura || '---';
+      
+          const btnTicket = document.createElement('button');
+          btnTicket.className = 'icon-btn text-primary';
+          btnTicket.innerHTML = '<i class="bi bi-receipt"></i>';
+          btnTicket.type = 'button';
+          btnTicket.addEventListener('click', () => verTicket(v));
+      
+          const contenedorAcciones = document.createElement('td');
+          contenedorAcciones.appendChild(btnTicket);
+      
+          if (!v.numeroFactura) {
+            const btnAceptar = document.createElement('button');
+            btnAceptar.className = 'icon-btn text-success';
+            btnAceptar.innerHTML = '<i class="bi bi-check-circle-fill"></i>';
+            btnAceptar.type = 'button';
+            btnAceptar.addEventListener('click', () => aceptarFactura(i));
+      
+            const btnEditar = document.createElement('button');
+            btnEditar.className = 'icon-btn text-warning';
+            btnEditar.innerHTML = '<i class="bi bi-pencil-square"></i>';
+            btnEditar.type = 'button';
+            btnEditar.addEventListener('click', () => editarFactura(i));
+      
+            const btnEliminar = document.createElement('button');
+            btnEliminar.className = 'icon-btn text-danger';
+            btnEliminar.innerHTML = '<i class="bi bi-trash-fill"></i>';
+            btnEliminar.type = 'button';
+            btnEliminar.addEventListener('click', () => eliminarVenta(i));
+      
+            contenedorAcciones.appendChild(btnAceptar);
+            contenedorAcciones.appendChild(btnEditar);
+            contenedorAcciones.appendChild(btnEliminar);
+          }
+      
+          fila.innerHTML = `
+            <td>${numeroFactura}</td>
+            <td>${v.fecha}</td>
+            <td>${v.metodoPago}</td>
+            <td>$${v.total.toFixed(2)}</td>
+          `;
+          fila.appendChild(contenedorAcciones);
+          ventasBody.appendChild(fila);
+      
+          totalGeneral += typeof v.total === 'number' ? v.total : 0;
+        });
+      
+        totalGeneralTd.textContent = `$${totalGeneral.toFixed(2)}`;
+      
+        // Agregar eventos a botones globales
+        document.getElementById('btnCerrarDia')?.addEventListener('click', confirmarCierre);
+        document.getElementById('btnVolver')?.addEventListener('click', () => {
+        location.href = 'cobro.html'; // Aquí deberías verificar que 'cobro.html' esté en la ruta correcta
+        });
+      });
+      
+    
+      function aceptarFactura(index) {
+        const ventas = JSON.parse(localStorage.getItem('ventas')) || [];
+        const venta = ventas[index];
+    
+        if (!venta.numeroFactura) {
+          let ultimo = parseInt(localStorage.getItem('ultimoNumeroFactura') || '0', 10);
+          ultimo += 1;
+    
+          venta.numeroFactura = ultimo.toString().padStart(7, '0');
+          localStorage.setItem('ultimoNumeroFactura', ultimo);
+          ventas[index] = venta;
+          localStorage.setItem('ventas', JSON.stringify(ventas));
+    
+          alert(`✅ Venta aceptada con número de factura ${venta.numeroFactura}`);
+          location.reload();
+        }
+      }
+    
+      function eliminarVenta(index) {
+        if (confirm('¿Seguro que querés eliminar esta venta?')) {
+          const ventas = JSON.parse(localStorage.getItem('ventas')) || [];
+          ventas.splice(index, 1);
+          localStorage.setItem('ventas', JSON.stringify(ventas));
+          location.reload();
+        }
+      }
+    
+      function editarFactura(index) {
+        const ventas = JSON.parse(localStorage.getItem('ventas')) || [];
+        const factura = ventas[index];
+        localStorage.setItem('facturaEnEdicion', JSON.stringify({ factura, index }));
+        window.location.href = 'cobro.html';
+      }
+    
+      function verTicket(venta) {
+        const nombreNegocio = localStorage.getItem('nombreNegocio') || 'Mi Negocio';
+    
+        let cuerpoTicket = `
+          <div style="font-family: monospace; max-width: 320px; background: #fff; padding: 16px; border: 1px dashed #999;">
+            <div class="text-center mb-2">
+              <strong style="font-size: 1.2em;">${nombreNegocio}</strong><br>
+              -----------------------------<br>
+              Venta #${venta.id}<br>
+              Fecha: ${venta.fecha}<br>
+              Pago: ${venta.metodoPago}<br>
+              -----------------------------<br>
+            </div>
+        `;
+    
+        venta.productos.forEach(p => {
+          const cantidad = p.cantidad || 1;
+          const total = p.precio * cantidad;
+          cuerpoTicket += `${p.nombre}<br>${cantidad} x $${p.precio.toFixed(2)} = $${total.toFixed(2)}<br>`;
+        });
+    
+        cuerpoTicket += `
+            -----------------------------<br>
+            <strong>Total: $${venta.total.toFixed(2)}</strong><br>
+            -----------------------------<br>
+        `;
+    
+        const textoQR = `
+    ${nombreNegocio}
+    Venta ID: ${venta.id}
+    Fecha: ${venta.fecha}
+    Método de pago: ${venta.metodoPago}
+    Total: $${venta.total.toFixed(2)}
+        `.trim();
+    
+        const qr = `<div class="text-center mt-2"><img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(textoQR)}" alt="QR Ticket"></div>`;
+    
+        document.getElementById('ticketContenido').innerHTML = cuerpoTicket + qr + '</div>';
+    
+        const modal = new bootstrap.Modal(document.getElementById('ticketModal'));
+        modal.show();
+      }
+    
+      function enviarPorEmail(id) {
+        const ventas = JSON.parse(localStorage.getItem('ventas')) || [];
+        const venta = ventas.find(v => v.id === id);
+    
+        if (venta) {
+          const templateParams = {
+            subject: 'Detalles de tu Venta',
+            id: venta.id,
+            fecha: venta.fecha,
+            productos: venta.productos.map(p => `${p.nombre} ($${p.precio.toFixed(2)})`).join(', '),
+            total: `$${venta.total.toFixed(2)}`
+          };
+    
+          emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
+            .then(() => alert('Correo enviado con éxito'))
+            .catch(error => alert('Error al enviar el correo: ' + error.text));
+        }
+      }
+    
+      function cerrarDia() {
+        const hoy = new Date().toISOString().split('T')[0];
+        const ventasTodas = JSON.parse(localStorage.getItem('ventas')) || [];
+        const ventasHoy = ventasTodas.filter(v => v.fecha.startsWith(hoy));
+      
+        if (ventasHoy.length === 0) {
+          alert('No hay ventas para cerrar el día.');
+          return;
+        }
+      
+        // ✅ Aquí usamos la línea corregida
+        const totalHoy = ventasHoy.reduce((acc, v) => acc + (typeof v.total === 'number' ? v.total : 0), 0);
+      
+        const historial = JSON.parse(localStorage.getItem('historialCierres')) || [];
+        const indexCierre = historial.findIndex(c => c.fecha === hoy);
+      
+        if (indexCierre !== -1) {
+          historial[indexCierre].ventas = historial[indexCierre].ventas.concat(ventasHoy);
+          historial[indexCierre].total += totalHoy;
+        } else {
+          const nuevoId = historial.length > 0 ? historial[historial.length - 1].id + 1 : 1;
+          historial.push({
+            id: nuevoId,
+            fecha: hoy,
+            total: totalHoy,
+            ventas: ventasHoy
+          });
+        }
+      
+        localStorage.setItem('historialCierres', JSON.stringify(historial));
+      
+        const ventasRestantes = ventasTodas.filter(v => !v.fecha.startsWith(hoy));
+        localStorage.setItem('ventas', JSON.stringify(ventasRestantes));
+      
+        alert('✅ Día cerrado correctamente. Podés iniciar nuevas ventas.');
+        location.reload();
+      }
+      
+    
+      function confirmarCierre() {
+        const clave = prompt("🔐 Ingrese la clave de administrador para cerrar el día:");
+    
+        if (clave === "admin123") {
+          cerrarDia();
+        } else if (clave === null) {
+          alert("⛔ Cancelado.");
+        } else {
+          alert("❌ Clave incorrecta. No se cerró el día.");
+        }
+      }

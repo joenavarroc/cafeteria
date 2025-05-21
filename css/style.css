@@ -211,3 +211,16 @@ body:hover .navbar-inferior {
     font-size: 0.9rem;
   }
 }
+
+    canvas {
+      max-width: 100%;
+      height: auto;
+    }
+
+        .icon-btn {
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+      margin-right: 8px;
+    }
