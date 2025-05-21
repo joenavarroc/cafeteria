@@ -1,0 +1,213 @@
+
+body {
+  position: relative;
+  background: url('https://cdn.pixabay.com/photo/2016/03/05/22/16/coffee-1239226_1280.jpg') center/cover no-repeat fixed;
+  min-height: 100vh;
+  overflow-x: hidden;
+  
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(2px);
+  z-index: -1;
+}
+
+.bg-body {
+  background: url('https://cdn.pixabay.com/photo/2016/03/05/22/16/coffee-1239226_1280.jpg') center/cover no-repeat fixed;
+  min-height: 100vh;
+}
+
+.container-fluid {
+  padding-bottom: 7rem; /* Esto asegura que el contenido no se solape con la navbar */
+}
+
+
+.contenido-flotante {
+  background-color: rgba(255, 255, 255, 0.281);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(3px);
+  padding: 2rem;
+  margin: 1rem auto;
+  max-width: 1400px;
+  width: 100%;
+  position: relative;
+  padding-bottom: 7rem; /* Espacio extra para el navbar */
+}
+
+
+.producto {
+  width: 45%;
+  flex: 1 1 140px;
+  max-width: 180px;
+  height: auto;
+  background-color: #f2f2f2;
+  border-radius: 10px;
+  margin: 10px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.producto:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.producto img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.producto-info {
+  padding: 5px;
+  background-color: white;
+  flex-grow: 1;
+}
+
+.producto-info h6 {
+  margin: 4px 0 2px;
+  font-size: 14px;
+}
+
+.producto-info p {
+  margin: 0;
+  font-size: 13px;
+  color: #555;
+}
+
+#btnNuevoProducto {
+  display: none;
+}
+
+.navbar-inferior {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background-color: #000000cc;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease-in-out;
+  z-index: 10000; /* Asegúrate de que esté por encima del contenido */
+}
+
+
+/* Para cuando la barra de navegación debe aparecer */
+body:hover .navbar-inferior {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.factura-box {
+  max-height: 75vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: #f8f9fa;
+}
+
+#factura {
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 5px;
+  padding-right: 5px;
+}
+
+#previewImagenes img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border 0.2s ease;
+}
+
+#previewImagenes img:hover {
+  border-color: #0d6efd;
+}
+
+#lista-productos {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.aclonica-regular {
+  font-family: "Aclonica", sans-serif;
+  font-weight: 500;
+  font-style: normal;
+  color: aliceblue;
+}
+
+#btnConfigNegocio {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  padding: 0.3rem 0.6rem;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+}
+
+#btnConfigNegocio:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: rotate(15deg) scale(1.05);
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+  .contenido-flotante {
+    margin: 10px auto;
+    padding: 1rem;
+  }
+
+  .producto {
+    flex: 1 1 48%;
+    max-width: 48%;
+  }
+
+  .producto-info h6,
+  .producto-info p {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .contenido-flotante {
+    padding: 1rem;
+    margin: 0.5rem;
+  }
+
+  .producto {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+
+  .factura-box h3,
+  .factura-box h4,
+  .btn,
+  .form-select {
+    font-size: 0.9rem;
+  }
+}
