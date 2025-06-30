@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Historial de Ventas</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    canvas {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body class="container mt-4">
+  <h2 class="mb-4 text-center">📊 Historial y Estadísticas de Ventas</h2>
+
+  <div class="row">
+    <!-- Historial -->
+    <div class="col-md-6 mb-4">
+      <h4>🗂️ Historial de Ventas</h4>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Fecha</th>
+            <th>Total</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="historialBody"></tbody>
+      </table>
+      <button class="btn btn-secondary mt-2" onclick="location.href='cobro.html'">🏠 Volver al inicio</button>
+    </div>
+
+    <!-- Gráfico -->
+    <div class="col-md-6">
+      <h4>📈 Estadísticas</h4>
+
+      <div class="mb-3">
+        <label for="tipoGrafico" class="form-label">Tipo de gráfico:</label>
+        <select id="tipoGrafico" class="form-select">
+          <option value="bar">Gráfico de barras</option>
+          <option value="pie">Gráfico circular</option>
+          <option value="line">Gráfico de líneas</option>
+        </select>
+        <button class="btn btn-primary mt-2" onclick="actualizarGrafico()">Actualizar Gráfico</button>
+      </div>
+
+      <canvas id="graficoVentas" height="300"></canvas>
+    </div>
+  </div>
+
+  <!-- Modal Detalle -->
+  <div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Detalle de Ventas</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div id="detalleVentasDia"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    let fechaSeleccionada = null;
+
+    function cargarHistorial() {
+      const historial = JSON.parse(localStorage.getItem('historialCierres')) || [];
+      const tbody = document.getElementById('historialBody');
+      tbody.innerHTML = '';
+
+      if (historial.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center">No hay cierres registrados.</td></tr>`;
+        return;
+      }
+
+      historial.forEach(dia => {
+        const fila = document.createElement('tr');
+        fila.innerHTML = `
+          <td>${dia.id}</td>
+          <td>${dia.fecha}</td>
+          <td>$${dia.total.toFixed(2)}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="verDetalle(${dia.id})">👁️ Ver</button>
+            <button class="btn btn-sm btn-warning" onclick="verDetalleMetodoPago('${dia.fecha}')">💳 Detalle</button>
+            <button class="btn btn-sm btn-info" onclick="verGrafico('${dia.fecha}')">📊 Gráfico</button>
+          </td>
+        `;
+        tbody.appendChild(fila);
+      });
+    }
+
+    function verDetalleMetodoPago(fecha) {
+      const historial = JSON.parse(localStorage.getItem('historialCierres')) || [];
+      const dia = historial.find(d => d.fecha === fecha);
+      if (!dia) return;
+    
+      const resumen = {};
+    
+      dia.ventas.forEach(v => {
+        resumen[v.metodoPago] = (resumen[v.metodoPago] || 0) + v.total;
+      });
+    
+      let mensaje = `💳 Detalle de pagos del día ${fecha}:\n\n`;
+      for (const metodo in resumen) {
+        mensaje += `• ${metodo}: $${resumen[metodo].toFixed(2)}\n`;
+      }
+    
+      alert(mensaje); // Podés usar un modal si preferís algo más elegante
+    }    
+
+    function verDetalle(id) {
+      const historial = JSON.parse(localStorage.getItem('historialCierres')) || [];
+      const dia = historial.find(d => d.id === id);
+      if (!dia) return;
+    
+      const contenedor = document.getElementById('detalleVentasDia');
+      const nombreNegocio = localStorage.getItem('nombreNegocio') || 'Mi Negocio';
+      contenedor.innerHTML = '';
+    
+      dia.ventas.forEach(v => {
+        let cuerpoTicket = `
+          <div style="font-family: monospace; max-width: 320px; background: #fff; padding: 16px; border: 1px dashed #999;">
+            <div class="text-center mb-2">
+              <strong style="font-size: 1.2em;">${nombreNegocio}</strong><br>
+              -----------------------------<br>
+              Venta #${v.id}<br>
+              Fecha: ${v.fecha}<br>
+              Pago: ${v.metodoPago}<br>
+              -----------------------------<br>
+            </div>
+        `;
+    
+        v.productos.forEach(p => {
+          const cantidad = p.cantidad || 1;
+          const precio = p.precio;
+          const total = precio * cantidad;
+    
+          cuerpoTicket += `
+            ${p.nombre}<br>
+            ${cantidad} x $${precio.toFixed(2)} = $${total.toFixed(2)}<br>
+          `;
+        });
+    
+        cuerpoTicket += `
+            -----------------------------<br>
+            <strong>Total: $${v.total.toFixed(2)}</strong><br>
+            -----------------------------<br>
+        `;
+    
+        // QR
+        const textoQR = `
+    ${nombreNegocio}
+    Venta ID: ${v.id}
+    Fecha: ${v.fecha}
+    Método de pago: ${v.metodoPago}
+    Total: $${v.total.toFixed(2)}
+        `.trim();
+    
+        const textoCodificado = encodeURIComponent(textoQR);
+        const qr = `<div class="text-center mt-2"><img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${textoCodificado}" alt="QR Ticket"></div>`;
+    
+        const div = document.createElement('div');
+        div.className = 'mb-4 d-flex flex-column align-items-center';
+        div.innerHTML = cuerpoTicket + qr + '</div>';
+    
+        contenedor.appendChild(div);
+      });
+    
+      new bootstrap.Modal(document.getElementById('modalDetalle')).show();
+    }
+    
+    
+
+    function verGrafico(fecha) {
+      fechaSeleccionada = fecha;
+      const historial = JSON.parse(localStorage.getItem('historialCierres')) || [];
+      const dia = historial.find(d => d.fecha === fecha);
+      if (!dia) return;
+    
+      const totalesPorProducto = {};
+    
+      dia.ventas.forEach(venta => {
+        venta.productos.forEach(producto => {
+          const nombre = producto.nombre;
+          const cantidad = producto.cantidad || 1;
+          const subtotal = producto.precio * cantidad;
+    
+          totalesPorProducto[nombre] = (totalesPorProducto[nombre] || 0) + subtotal;
+        });
+      });
+    
+      const nombres = Object.keys(totalesPorProducto);
+      const montos = Object.values(totalesPorProducto);
+    
+      if (window.miGrafico) {
+        window.miGrafico.destroy();
+      }
+    
+      const tipoGrafico = document.getElementById('tipoGrafico').value;
+      const ctx = document.getElementById('graficoVentas').getContext('2d');
+      window.miGrafico = new Chart(ctx, {
+        type: tipoGrafico,
+        data: {
+          labels: nombres,
+          datasets: [{
+            label: 'Monto Vendido ($)',
+            data: montos,
+            backgroundColor: nombres.map(() => `hsl(${Math.random() * 360}, 70%, 60%)`)
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: tipoGrafico !== 'bar' },
+            tooltip: {
+              callbacks: {
+                label: ctx => `Total: $${ctx.raw.toFixed(2)}`
+              }
+            }
+          }
+        }
+      });
+    }  
+
+    function actualizarGrafico() {
+      if (fechaSeleccionada) verGrafico(fechaSeleccionada);
+    }
+
+    document.addEventListener('DOMContentLoaded', cargarHistorial);
+  </script>
+</body>
+</html>
